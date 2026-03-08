@@ -10,7 +10,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
     email: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
-
+    password_hash: Mapped[str] = mapped_column(String(120), unique=False, nullable=False)
     sessions:Mapped[list["ChatSession"]]= relationship("ChatSession", 
                                                      back_populates="user", 
                                                      cascade="all, delete-orphan")

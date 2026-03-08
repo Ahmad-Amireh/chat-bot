@@ -2,8 +2,9 @@ from sqlalchemy.orm import Session
 from app.models.user import User
 from sqlalchemy import select, func
 from fastapi import HTTPException, status
-from app.schemas.user import UserCreate
+from app.schemas.user import UserCreate, Token
 from typing import List
+from app.core.auth import hash_password
 
 def create_user(db: Session, user_data: UserCreate) -> User:
     stmt = select(User).where(func.lower(User.name) == user_data.name.lower())
@@ -22,7 +23,7 @@ def create_user(db: Session, user_data: UserCreate) -> User:
             detail="Email already exists"
         )
     
-    new_user = User(name=user_data.name, email=user_data.email)
+    new_user = User(name=user_data.name, email=user_data.email, password_hash = hash_password(user_data.password))
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
