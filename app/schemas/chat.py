@@ -7,4 +7,4 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    assistant_reply: str
+    content: str
