@@ -1,5 +1,5 @@
 from __future__ import annotations
-from sqlalchemy import String, DateTime, func, INTEGER, ForeignKey
+from sqlalchemy import String, DateTime, func, INTEGER, ForeignKey, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
@@ -9,6 +9,7 @@ class ChatSession(Base):
     id: Mapped[int] = mapped_column(INTEGER, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(INTEGER, ForeignKey("users.id"), nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(100), default="New Chat")
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[str] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
