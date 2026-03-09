@@ -5,6 +5,7 @@ from app.services.message import list_messages_for_session
 from app.core.config import settings
 from groq import Groq
 from app.core.config import settings
+from app.models.user import User
 
 client = Groq(api_key=settings.GROK_API_KEY)
 
@@ -37,7 +38,7 @@ def summarize_messages(messages: list[Message]) -> str:
     return response.choices[0].message.content
 
 
-def update_session_summary(db: Session, session_id: int):
+def update_session_summary(db: Session, user:User, session_id: int):
     """
     Update the session summary by summarizing older messages.
     Overwrites the existing summary instead of appending.
@@ -46,7 +47,7 @@ def update_session_summary(db: Session, session_id: int):
     if not session:
         return
 
-    messages = list_messages_for_session(db, session_id)
+    messages = list_messages_for_session(db, user, session_id)
 
     # Do nothing if conversation is too short
     if len(messages) < settings.SUMMARY_TRIGGER:

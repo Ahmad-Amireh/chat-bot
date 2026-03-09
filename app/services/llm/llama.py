@@ -6,17 +6,21 @@ from app.services.message import create_message, list_messages_for_session
 from app.services.memory import update_session_summary
 from groq import Groq
 from app.core.config import settings
+from fastapi import HTTPException
+from app.models.user import User
 
 client = Groq(api_key=settings.GROK_API_KEY)
 
 
-def chat_with_llama_client(db: Session, session_id: int, user_content: str) -> Message:
+def chat_with_llama_client(db: Session, user: User, session_id: int, user_content: str) -> Message:
     """
     Handle a user message, send to LLaMA, store response, and update summary.
     """
+    print(user)
     # 1️⃣ Store user message
     user_msg = create_message(
         db,
+        user,
         MessageCreate(
             session_id=session_id,
             role="user",
@@ -26,7 +30,12 @@ def chat_with_llama_client(db: Session, session_id: int, user_content: str) -> M
 
     # 2️⃣ Get session and all messages
     session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
-    session_messages = list_messages_for_session(db, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    session_messages = list_messages_for_session(db, user, session_id)
 
     # 3️⃣ Build prompt for LLaMA
     prompt_messages = []
@@ -59,6 +68,7 @@ def chat_with_llama_client(db: Session, session_id: int, user_content: str) -> M
     # 5️⃣ Store assistant message
     assistant_msg = create_message(
         db,
+        user,
         MessageCreate(
             session_id=session_id,
             role="assistant",
@@ -67,6 +77,6 @@ def chat_with_llama_client(db: Session, session_id: int, user_content: str) -> M
     )
     print(prompt_messages)
     # 6️⃣ Update session summary if needed
-    update_session_summary(db, session_id)
+    update_session_summary(db, user, session_id)
 
     return assistant_msg
