@@ -5,18 +5,13 @@ from app.models.chat_session import ChatSession
 from app.models.user import User
 from app.schemas.session import ChatSessionCreate
 from typing import List
+from app.services.auth import CurrentUser
 
-def create_session(db: Session, session_data: ChatSessionCreate) -> ChatSession:
+def create_session(db: Session, current_user:CurrentUser,  session_data: ChatSessionCreate) -> ChatSession:
     # Check user exists
-    user = db.get(User, session_data.user_id)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User with id {session_data.user_id} not found"
-        )
 
     new_session = ChatSession(
-        user_id=session_data.user_id,
+        user_id=current_user.id,
         title=session_data.title
     )
     db.add(new_session)

@@ -8,7 +8,7 @@ class ChatSessionBase(BaseModel):
     
 
 class ChatSessionCreate(ChatSessionBase):
-    user_id: int
+    pass
 
 class ChatSessionResponse(ChatSessionBase):
     id: int

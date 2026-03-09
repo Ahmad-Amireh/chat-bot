@@ -2,7 +2,6 @@ from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
 
 class MessageBase(BaseModel):
-    role: str = Field(..., max_length=20)  # "user", "assistant", "system"
     content: str = Field(...)
     session_id: int
 
