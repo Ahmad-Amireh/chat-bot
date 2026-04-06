@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.schemas.user import UserPublicResponse, UserCreate, UserPrivateResponse, Token
+from app.schemas.user import UserPublicResponse, UserCreate, UserPrivateResponse, Token, LoginRequest
 from app.services.user_service import list_users, get_user_by_id, create_user as create_user_service
 from typing import Annotated
 from fastapi.security import OAuth2PasswordRequestForm
@@ -43,6 +43,22 @@ def login_for_access_token(
         db=db,
         email=form_data.username,
         password=form_data.password
+    )
+
+    access_token = create_user_access_token(user.id)
+
+    return Token(
+        access_token=access_token,
+        token_type="bearer"
+    )
+
+@router.post("/login", response_model=Token)
+def login(data: LoginRequest, db: Session = Depends(get_db)):
+
+    user = authenticate_user(
+        db=db,
+        email=data.email,
+        password=data.password
     )
 
     access_token = create_user_access_token(user.id)

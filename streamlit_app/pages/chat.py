@@ -3,7 +3,7 @@ import requests
 import re
 
 API_URL = "http://127.0.0.1:8000/api"  # your FastAPI URL
-USER_ID = 1  # test user ID
+
 MAX_SESSIONS = 20  # number of sessions to fetch
 
 # Example list of products
@@ -24,6 +24,14 @@ def render_with_links(text: str) -> str:
 st.set_page_config(page_title="Chat with LLaMA", layout="wide")
 st.title("Chat with LLaMA")
 
+if "token" not in st.session_state:
+    st.error("Please login first")
+    st.stop()
+
+headers = {
+    "Authorization": f"Bearer {st.session_state['token']}"
+}
+print(headers)
 # ------------------------------
 # Session state initialization
 # ------------------------------
@@ -38,7 +46,11 @@ if "sessions_list" not in st.session_state:
 # Fetch last N sessions for user
 # ------------------------------
 try:
-    response = requests.get(f"{API_URL}/sessions/user/{USER_ID}")
+    response = requests.get(
+    f"{API_URL}/sessions/me",
+    headers=headers
+)
+    
     response.raise_for_status()
     sessions = response.json()
     # take last MAX_SESSIONS sorted by ID descending
@@ -75,9 +87,14 @@ if st.session_state.sessions_list:
 
 # Button to start a new session
 if st.sidebar.button("Start New Session"):
-    payload = {"title": f"Session {len(st.session_state.sessions_list)+1}", "user_id": USER_ID}
+    payload = {"title": f"Session {len(st.session_state.sessions_list)+1}"}
     try:
-        resp = requests.post(f"{API_URL}/sessions", json=payload)
+        
+        resp = requests.post(
+            f"{API_URL}/sessions",
+            json=payload,
+            headers=headers
+        )
         resp.raise_for_status()
         data = resp.json()
         st.session_state.session_id = data["id"]
@@ -112,10 +129,14 @@ if st.session_state.session_id:
 
         # send to FastAPI
         try:
-            resp = requests.post(f"{API_URL}/chat/message", json={
-                "session_id": st.session_state.session_id,
-                "message": user_input
-            })
+            resp = requests.post(
+                f"{API_URL}/chat/message",
+                json={
+                    "session_id": st.session_state.session_id,
+                    "message": user_input
+                },
+                headers=headers
+            )
             resp.raise_for_status()
             assistant_msg = resp.json()["content"]
 

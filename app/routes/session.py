@@ -20,6 +20,6 @@ def get_session(session_id: int, db: Annotated[Session, Depends(get_db)]):
     return get_session_by_id(db, session_id)
 
 
-@router.get("/user/{user_id}", response_model=List[ChatSessionResponse])
-def list_user_sessions(user_id: int, db: Annotated[Session, Depends(get_db)]):
-    return list_sessions_for_user(db, user_id)
+@router.get("/me", response_model=List[ChatSessionResponse])
+def list_user_sessions(current_user: CurrentUser, db: Annotated[Session, Depends(get_db)]):
+    return list_sessions_for_user(db, current_user)

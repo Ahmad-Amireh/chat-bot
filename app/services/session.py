@@ -30,6 +30,12 @@ def get_session_by_id(db: Session, session_id: int) -> ChatSession | None:
     return session
 
 
-def list_sessions_for_user(db: Session, user_id: int) -> List[ChatSession]:
-    stmt = select(ChatSession).where(ChatSession.user_id == user_id)
-    return db.execute(stmt).scalars().all()
+def list_sessions_for_user(db: Session, current_user: User) -> List[ChatSession]:
+    stmt = select(ChatSession).where(ChatSession.user_id == current_user.id)
+    sessions = db.execute(stmt).scalars().all()
+    if not sessions:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Sessions not found"
+        )
+    return sessions
