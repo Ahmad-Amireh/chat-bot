@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 
-API_URL = "http://localhost:8000/api/users/login"
+API_URL = "http://localhost:8001/api/users/login"
 
 st.title("Login")
 

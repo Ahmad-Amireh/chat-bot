@@ -11,5 +11,6 @@ class MessageCreate(MessageBase):
 class MessageResponse(MessageBase):
     id: int
     created_at: datetime
+    role: str
 
     model_config = ConfigDict(from_attributes=True)

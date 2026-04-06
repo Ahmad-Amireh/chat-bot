@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 import re
 
-API_URL = "http://127.0.0.1:8000/api"
+API_URL = "http://127.0.0.1:8001/api"
 MAX_SESSIONS = 20
 PRODUCTS = ["shawarma", "pizza", "burger"]
 
@@ -34,7 +34,7 @@ headers = {
 def render_with_links(text: str) -> str:
     for product in PRODUCTS:
         pattern = re.compile(rf"\b{product}\b", re.IGNORECASE)
-        text = pattern.sub(f"[{product}](http://127.0.0.1:8000/products/{product})", text)
+        text = pattern.sub(f"[{product}](http://127.0.0.1:8001/products/{product})", text)
     return text.replace("\n\n", "\n")
 
 # ------------------------------
