@@ -3,6 +3,7 @@ from sqlalchemy import String, DateTime, func, INTEGER, ForeignKey, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
+
 class ChatSession(Base):
     __tablename__ = "chat_sessions"
 
@@ -15,3 +16,4 @@ class ChatSession(Base):
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="sessions")
     messages: Mapped[list["Message"]] = relationship("Message", back_populates="session", cascade="all, delete-orphan")
+    pending_actions: Mapped[list["PendingAction"]] = relationship("PendingAction", back_populates="session", cascade="all, delete-orphan")

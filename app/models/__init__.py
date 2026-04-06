@@ -3,3 +3,4 @@ from .user import User
 from .chat_session import ChatSession
 from .message import Message
 from .product import Product
+from .pending_action import PendingAction

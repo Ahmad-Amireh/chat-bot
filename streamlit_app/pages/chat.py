@@ -4,12 +4,10 @@ import re
 
 API_URL = "http://127.0.0.1:8001/api"
 MAX_SESSIONS = 20
-PRODUCTS = ["shawarma", "pizza", "burger"]
-
-
+PRODUCTS = ["shawarma",  "burger"]
 
 # ------------------------------
-# Auth check — must be FIRST, before set_page_config
+# Auth check
 # ------------------------------
 if "token" not in st.session_state:
     st.error("Please login first")
@@ -22,7 +20,7 @@ st.set_page_config(page_title="Chat with LLaMA", layout="wide")
 st.title("Chat with LLaMA")
 
 # ------------------------------
-# Headers — defined once
+# Headers
 # ------------------------------
 headers = {
     "Authorization": f"Bearer {st.session_state['token']}"
@@ -46,24 +44,33 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 if "sessions_list" not in st.session_state:
     st.session_state.sessions_list = []
+if "pending_action_id" not in st.session_state:  # ✅ new
+    st.session_state.pending_action_id = None
 
 # ------------------------------
 # Fetch sessions
 # ------------------------------
-try:
-    response = requests.get(f"{API_URL}/sessions/me", headers=headers)
-    response.raise_for_status()
-    sessions = response.json()
-    sessions = sorted(sessions, key=lambda x: x["id"], reverse=True)[:MAX_SESSIONS]
-    st.session_state.sessions_list = sessions
-except requests.RequestException as e:
-    st.error(f"Failed to fetch sessions: {e}")
-    sessions = []
+# ------------------------------
+# Fetch sessions — only if not already loaded
+# ------------------------------
+if not st.session_state.sessions_list:
+    try:
+        response = requests.get(f"{API_URL}/sessions/me", headers=headers)
+        response.raise_for_status()
+        sessions = response.json()
+        sessions = sorted(sessions, key=lambda x: x["id"], reverse=True)[:MAX_SESSIONS]
+        st.session_state.sessions_list = sessions
+    except requests.RequestException as e:
+        st.error(f"Failed to fetch sessions: {e}")
 
 # ------------------------------
 # Sidebar
 # ------------------------------
 st.sidebar.title("Your Sessions")
+
+if st.sidebar.button("🔄 Refresh Sessions"):
+    st.session_state.sessions_list = []
+    st.rerun()
 
 if st.session_state.sessions_list:
     session_options = {f"Session {i+1}": s["id"] for i, s in enumerate(st.session_state.sessions_list)}
@@ -72,6 +79,7 @@ if st.session_state.sessions_list:
 
     if st.session_state.session_id != selected_id:
         st.session_state.session_id = selected_id
+        st.session_state.pending_action_id = None  # ✅ clear pending on session switch
         try:
             resp = requests.get(f"{API_URL}/messages/session/{selected_id}", headers=headers)
             resp.raise_for_status()
@@ -82,7 +90,6 @@ if st.session_state.sessions_list:
             ]
         except requests.RequestException as e:
             st.error(f"Failed to load messages: {e}")
-        
 
 if st.sidebar.button("Start New Session"):
     payload = {"title": f"Session {len(st.session_state.sessions_list) + 1}"}
@@ -92,6 +99,7 @@ if st.sidebar.button("Start New Session"):
         data = resp.json()
         st.session_state.session_id = data["id"]
         st.session_state.messages = []
+        st.session_state.pending_action_id = None  # ✅ clear pending on new session
         st.success("New session created!")
         st.session_state.sessions_list.insert(0, data)
     except requests.RequestException as e:
@@ -101,6 +109,7 @@ if st.sidebar.button("Start New Session"):
 # Display messages
 # ------------------------------
 st.subheader("Conversation")
+
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         if msg["role"] == "assistant":
@@ -109,26 +118,81 @@ for msg in st.session_state.messages:
             st.markdown(msg["content"])
 
 # ------------------------------
-# Send message
+# ✅ Confirmation buttons
 # ------------------------------
-if st.session_state.session_id:
-    user_input = st.chat_input("Type your message here...")
-    if user_input:
-        st.session_state.messages.append({"role": "user", "content": user_input})
-        with st.chat_message("user"):
-            st.markdown(user_input)
+if st.session_state.pending_action_id:
+    st.info("Please confirm or cancel the action above.")
+    col1, col2 = st.columns(2)
 
+    if col1.button("✅ Confirm", use_container_width=True):
         try:
             resp = requests.post(
-                f"{API_URL}/chat/message",
-                json={"session_id": st.session_state.session_id, "message": user_input},
+                f"{API_URL}/chat/execute",
+                json={"action_id": st.session_state.pending_action_id, "confirmed": True},
                 headers=headers
             )
             resp.raise_for_status()
-            assistant_msg = resp.json()["content"]
-            assistant_msg_with_links = render_with_links(assistant_msg)
-            st.session_state.messages.append({"role": "assistant", "content": assistant_msg_with_links})
-            with st.chat_message("assistant"):
-                st.markdown(assistant_msg_with_links)
+            result = resp.json()["content"]
+            st.session_state.messages.append({"role": "assistant", "content": result})
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": "✅ Done! You can view the updated products list on the [Products page](http://localhost:8501/products)."
+            })
         except requests.RequestException as e:
-            st.error(f"Failed to get response from server: {e}")
+            st.error(f"Failed to execute action: {e}")
+        finally:
+            st.session_state.pending_action_id = None
+            st.rerun()
+
+    if col2.button("❌ Cancel", use_container_width=True):
+        try:
+            resp = requests.post(
+                f"{API_URL}/chat/execute",
+                json={"action_id": st.session_state.pending_action_id, "confirmed": False},
+                headers=headers
+            )
+            resp.raise_for_status()
+        except requests.RequestException as e:
+            st.error(f"Failed to cancel action: {e}")
+        finally:
+            st.session_state.messages.append({"role": "assistant", "content": "Action cancelled."})
+            st.session_state.pending_action_id = None
+            st.rerun()
+            
+
+
+# ------------------------------
+# Send message — blocked while pending
+# ------------------------------
+if st.session_state.session_id:
+    if st.session_state.pending_action_id:
+        st.chat_input("Please confirm or cancel the action above...", disabled=True)
+    else:
+        user_input = st.chat_input("Type your message here...")
+        if user_input:
+            st.session_state.messages.append({"role": "user", "content": user_input})
+            with st.chat_message("user"):
+                st.markdown(user_input)
+
+            try:
+                resp = requests.post(
+                    f"{API_URL}/chat/message",
+                    json={"session_id": st.session_state.session_id, "message": user_input},
+                    headers=headers
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                assistant_msg = data["content"]
+                assistant_msg_with_links = render_with_links(assistant_msg)
+
+                # ✅ Store action_id if confirmation required
+                if data.get("requires_confirmation"):
+                    st.session_state.pending_action_id = data["action_id"]
+                    st.rerun()  # ← add this line
+
+                st.session_state.messages.append({"role": "assistant", "content": assistant_msg_with_links})
+                with st.chat_message("assistant"):
+                    st.markdown(assistant_msg_with_links)
+
+            except requests.RequestException as e:
+                st.error(f"Failed to get response from server: {e}")
