@@ -15,11 +15,11 @@ def create_session(session_data: ChatSessionCreate, current_user: CurrentUser, d
     return create_session_service(db, current_user, session_data)
 
 
+@router.get("/me", response_model=List[ChatSessionResponse])
+def list_user_sessions(current_user: CurrentUser, db: Annotated[Session, Depends(get_db)]):
+    return list_sessions_for_user(db, current_user)
+
 @router.get("/{session_id}", response_model=ChatSessionResponse)
 def get_session(session_id: int, db: Annotated[Session, Depends(get_db)]):
     return get_session_by_id(db, session_id)
 
-
-@router.get("/me", response_model=List[ChatSessionResponse])
-def list_user_sessions(current_user: CurrentUser, db: Annotated[Session, Depends(get_db)]):
-    return list_sessions_for_user(db, current_user)
